@@ -8,6 +8,7 @@ module WithRender = (Config: Configuration) => {
   type childless = array(nothing);
   type renderProp = (module Config.t) => ReasonReact.reactElement;
   type state =
+    | Initial
     | Loading
     | Failed(string)
     | Loaded((module Config.t));
@@ -15,6 +16,7 @@ module WithRender = (Config: Configuration) => {
   /** Our component accept different props :
     *
     * fetch
+    * onInitial
     * onFail
     * onLoading
     * delay
@@ -27,38 +29,43 @@ module WithRender = (Config: Configuration) => {
   let make =
       (
         ~fetch,
+        ~onInitial=() => ReasonReact.null,
         ~onFail=_error => ReasonReact.null,
         ~onLoading=() => ReasonReact.null,
-        ~delay=200,
+        ~delay=2000,
         ~render: renderProp,
         _children: childless,
       ) => {
     ...component,
-    initialState: () => Loading,
-    reducer: (action, _state) =>
+    initialState: () => Initial,
+    reducer: (action, state) =>
       switch (action) {
-      | Loading => ReasonReact.Update(Loading)
+      | Initial => ReasonReact.Update(Initial)
+      | Loading =>
+        switch (state) {
+        | Initial
+        | Loading => ReasonReact.Update(Loading)
+        | _ => ReasonReact.NoUpdate
+        }
       | Failed(err) => ReasonReact.Update(Failed(err))
       | Loaded(component) => ReasonReact.Update(Loaded(component))
       },
     didMount: self => {
-      let timeoutId =
-        Js.Global.setTimeout(
-          () =>
-            fetch()
-            /* Resolve module (unwrap). */
-            |> resolve
-            /* Resolve new state, user should refine module himself with correct type on render. */
-            <$> (data => self.send(Loaded(data)))
-            /* Forward error if some trouble happen. */
-            <$!> (err => self.send(Failed(err |> Js.String.make)))
-            |> ignore,
-          delay,
-        );
+      fetch()
+      /* Resolve module (unwrap). */
+      |> resolve
+      /* Resolve new state, user should refine module himself with correct type on render. */
+      <$> (data => self.send(Loaded(data)))
+      /* Forward error if some trouble happen. */
+      <$!> (err => self.send(Failed(err |> Js.String.make)))
+      |> ignore;
+      
+      let timeoutId = Js.Global.setTimeout(() => self.send(Loading), delay);
       self.onUnmount(() => Js.Global.clearTimeout(timeoutId));
     },
     render: ({state}) =>
       switch (state) {
+      | Initial => onInitial()
       | Loading => onLoading()
       | Failed(err) => onFail(err)
       | Loaded(component) => render(component)
@@ -69,6 +76,7 @@ module WithRender = (Config: Configuration) => {
 module WithChildren = (Config: Configuration) => {
   type renderChild = (module Config.t) => ReasonReact.reactElement;
   type state =
+    | Initial
     | Loading
     | Failed(string)
     | Loaded((module Config.t));
@@ -76,6 +84,7 @@ module WithChildren = (Config: Configuration) => {
   /** Our component accept different props :
     *
     * fetch
+    * onInitial
     * onFail
     * onLoading
     * delay
@@ -88,37 +97,42 @@ module WithChildren = (Config: Configuration) => {
   let make =
       (
         ~fetch,
+        ~onInitial=() => ReasonReact.null,
         ~onFail=_error => ReasonReact.null,
         ~onLoading=() => ReasonReact.null,
         ~delay=200,
         children: renderChild,
       ) => {
     ...component,
-    initialState: () => Loading,
-    reducer: (action, _state) =>
+    initialState: () => Initial,
+    reducer: (action, state) =>
       switch (action) {
-      | Loading => ReasonReact.Update(Loading)
+      | Initial => ReasonReact.Update(Initial)
+      | Loading =>
+        switch (state) {
+        | Initial
+        | Loading => ReasonReact.Update(Loading)
+        | _ => ReasonReact.NoUpdate
+        }
       | Failed(err) => ReasonReact.Update(Failed(err))
       | Loaded(component) => ReasonReact.Update(Loaded(component))
       },
     didMount: self => {
-      let timeoutId =
-        Js.Global.setTimeout(
-          () =>
-            fetch()
-            /* Resolve module (unwrap). */
-            |> resolve
-            /* Resolve new state, user should refine module himself with correct type on render. */
-            <$> (data => self.send(Loaded(data)))
-            /* Forward error if some trouble happen. */
-            <$!> (err => self.send(Failed(err |> Js.String.make)))
-            |> ignore,
-          delay,
-        );
+      fetch()
+      /* Resolve module (unwrap). */
+      |> resolve
+      /* Resolve new state, user should refine module himself with correct type on render. */
+      <$> (data => self.send(Loaded(data)))
+      /* Forward error if some trouble happen. */
+      <$!> (err => self.send(Failed(err |> Js.String.make)))
+      |> ignore;
+      
+      let timeoutId = Js.Global.setTimeout(() => self.send(Loading), delay);
       self.onUnmount(() => Js.Global.clearTimeout(timeoutId));
     },
     render: ({state}) =>
       switch (state) {
+      | Initial => onInitial()
       | Loading => onLoading()
       | Failed(err) => onFail(err)
       | Loaded(component) => children(component)

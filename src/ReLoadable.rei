@@ -8,6 +8,7 @@ module WithRender:
     type childless = array(nothing);
     type renderProp = (module Config.t) => ReasonReact.reactElement;
     type state =
+      | Initial
       | Loading
       | Failed(string)
       | Loaded((module Config.t));
@@ -23,6 +24,7 @@ module WithRender:
       (
         ~fetch: unit =>
                 Js.Promise.t(DynamicImport.importable((module Config.t))),
+        ~onInitial: unit => ReasonReact.reactElement=?,
         ~onFail: string => ReasonReact.reactElement=?,
         ~onLoading: unit => ReasonReact.reactElement=?,
         ~delay: int=?,
@@ -43,6 +45,7 @@ module WithChildren:
   {
     type renderChild = (module Config.t) => ReasonReact.reactElement;
     type state =
+      | Initial
       | Loading
       | Failed(string)
       | Loaded((module Config.t));
@@ -58,6 +61,7 @@ module WithChildren:
       (
         ~fetch: unit =>
                 Js.Promise.t(DynamicImport.importable((module Config.t))),
+        ~onInitial: unit => ReasonReact.reactElement=?,
         ~onFail: string => ReasonReact.reactElement=?,
         ~onLoading: unit => ReasonReact.reactElement=?,
         ~delay: int=?,
